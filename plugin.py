@@ -134,14 +134,12 @@ class BasePlugin:
                     if( len( jsonArray ) ):
                         # only update Domoticz from JSON on plugin start
                         if( self.counter == 0 ):
-                            #wled data comes from json
+                        #wled data comes from json
                             Domoticz.Log("Updating Domoticz from JSON")
                             wledData["red"] = int(jsonArray['state']['seg'][0]["col"][0][0])
                             wledData["green"] = int(jsonArray['state']['seg'][0]["col"][0][1])
                             wledData["blue"] = int(jsonArray['state']['seg'][0]["col"][0][2])
                             wledData["bri"] = jsonArray['state']['bri']
-                            wledData["preset"] = jsonArray['state']['ps']
-                            if( wledData["preset"] < 0 ): wledData["preset"] = 0
                             wledData["effectCurrent"] = jsonArray['state']['seg'][0]['fx']
                             wledData["effectIntensity"] = jsonArray['state']['seg'][0]['ix']
                             wledData["effectSpeed"] = jsonArray['state']['seg'][0]['sx']
@@ -149,6 +147,10 @@ class BasePlugin:
 
                             # update domoticz wleddata from json
                             UpdateStatusInDomoticz()
+
+                        wledData["preset"] = jsonArray['state']['ps']
+                        if( wledData["preset"] < 0 ): wledData["preset"] = 0
+                        UpdateDevice(4,1,int(wledData["preset"]*10))
 
                         # every time JSON data is retrieved update effects and palettes in Domoticz
                         UpdateEffectsInDomoticz()
@@ -200,10 +202,6 @@ class BasePlugin:
                 doWLEDRequest( "&T=1&FX="+str(int(Level/10)-1) )
                 #UpdateDevice(2, 1, Level )
 
-            if( Command == "Off" ):
-                doWLEDRequest( "&T=0" )
-                #UpdateDevice(2, 0,  0 )
-
         # color picked
         if( Unit == 3 ):
             if( Command == "Set Level" ):
@@ -214,7 +212,7 @@ class BasePlugin:
             if( Command == "Set Color" ):		#set color and level
                 self.Color = Color;
                 self.Level = Level
-                Domoticz.Log( "Color:" + str(self.Color) )
+                Domoticz.Log( "Color: " + str(self.Color) )
                 parsedColor = json.loads(self.Color)
                 #UpdateDevice(3,1,self.Level,self.Color)
                 doWLEDRequest( "/win&FX=0&A="+str(int(self.Level*2.55))+"&R="+str(parsedColor["r"])+"&G="+str(parsedColor["g"])+"&B="+str(parsedColor["b"] ) )
@@ -225,14 +223,19 @@ class BasePlugin:
 
             if( Command == "Off" ):
                 #UpdateDevice(3,0, self.Level) 		#,self.Color)
-                doWLEDRequest( "/win&T=0&A="+str(int(self.Level*2.55)) )
+                UpdateDevice(4,0,0)
+                doWLEDRequest( "/win&T=0&PL=0&A="+str(int(self.Level*2.55)) )
 
         # preset picked
         if( Unit == 4 ):
             if( Command == "Set Level" ):
-                Domoticz.Log( "Switching to preset" + str(int(Level/10)))
-                #UpdateDevice(4,1,int(Level))
+                Domoticz.Log( "Switching to preset: " + str(int(Level/10)))
+                UpdateDevice(4,1,int(Level))
                 doWLEDRequest( "/win&PL="+str(int(Level/10)) )
+				
+            if( Command == "Off" ):
+                UpdateDevice(4,0,0)
+                doWLEDRequest( "/win&T=0&PL=0&A="+str(int(self.Level*2.55)) )
 
         # fx speed set
         if( Unit == 5 ):
@@ -404,8 +407,8 @@ def UpdateStatusInDomoticz():
     UpdateDevice(1,1,(int(wledData["effectPalette"])+1)*10 )
 
     # preset (not implemented in WLED yet)
-#   Domoticz.Log( "preset:" + str(preset) )
-#   UpdateDevice(4,1,int(wledData["preset"]*10)) 
+#    Domoticz.Log( "preset:" + str(preset) )
+#    UpdateDevice(4,1,int(wledData["preset"]*10)) 
 
 def getWLEDJSON( JSONConn ):
     #Domoticz.Log("getWLEDJSON")
